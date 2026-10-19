@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Core Stack Radar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c111c; --panel:#121a29; --panel2:#172133; --line:#223049; --text:#e6ebf5; --dim:#8b97ad; --faint:#5d6a82;
+  --long:#2fbf71; --longBg:#123b28; --short:#e5484d; --shortBg:#43181d; --flat:#2a3449;
+  --trend:#3ec7d6; --chop:#f0a04b; --accent:#7c83ff; --gold:#e0b85c; --sq:#4c9dff; --ex:#ff5c7a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 Inter,system-ui,sans-serif}
+a{color:var(--accent)}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;padding:18px 24px;border-bottom:1px solid var(--line)}
+.brand{font-weight:700;letter-spacing:.22em;font-size:18px}
+.brand small{display:block;font-weight:500;letter-spacing:.12em;font-size:11px;color:var(--dim);margin-top:2px}
+.stats{margin-left:auto;color:var(--dim);font-size:13px;text-align:right}
+.stats b{color:var(--text);font-weight:600}
+.demo{background:#5b2a0f;color:#ffd2a8;border:1px solid #a1501d;border-radius:8px;padding:8px 14px;margin:12px 24px 0;font-size:13px}
+.controls{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;padding:14px 24px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.pill{border:1px solid var(--line);background:transparent;color:var(--dim);border-radius:999px;padding:6px 14px;font:500 13px Inter,sans-serif;cursor:pointer}
+.pill:hover{color:var(--text);border-color:#33456a}
+.pill.on{background:var(--accent);color:#0c0f1a;border-color:var(--accent)}
+input[type=search],select{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:7px 10px;font:13px Inter,sans-serif}
+input[type=search]{width:170px}
+label.ctl{display:flex;align-items:center;gap:8px;color:var(--dim);font-size:13px}
+input[type=range]{accent-color:var(--accent);width:110px}
+.cadence{display:flex;flex-wrap:wrap;gap:6px 22px;padding:9px 24px;background:var(--panel);border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:12.5px;color:var(--dim)}
+.cadence b{color:var(--accent);letter-spacing:.12em;font-size:12px}
+.wrap{overflow-x:auto;max-width:100%}
+table{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%}
+th,td{padding:7px 6px;text-align:center;white-space:nowrap;border-bottom:1px solid var(--line)}
+thead th{position:sticky;top:0;background:#0f1624;color:var(--dim);font:600 11.5px Inter,sans-serif;letter-spacing:.1em;text-transform:uppercase;z-index:2}
+thead tr.grp th{color:var(--text);font-size:12px;border-left:1px solid var(--line)}
+thead tr.sub th{top:31px}
+th.sort{cursor:pointer;user-select:none}
+th.sort:hover{color:var(--text)}
+th.sort.act{color:var(--accent)}
+th.gl,td.gl{border-left:1px solid var(--line)}
+td.sym,th.sym{position:sticky;left:0;background:var(--bg);text-align:left;z-index:1;min-width:150px;padding-left:16px}
+thead th.sym{z-index:3;background:#0f1624}
+tbody tr:hover td{background:#111a2a}
+tbody tr:hover td.sym{background:#111a2a}
+.sym b{font-weight:700;font-size:14.5px}
+.cls{display:inline-block;margin-left:6px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.num{font-family:"JetBrains Mono",monospace;font-size:13px}
+.up{color:var(--long)} .dn{color:var(--short)} .mute{color:var(--faint)}
+.chip{display:inline-block;min-width:58px;padding:5px 8px;border-radius:7px;font:600 12px "JetBrains Mono",monospace;border:1px solid transparent}
+.c-long{background:var(--longBg);color:#8ff0b8}
+.c-short{background:var(--shortBg);color:#ffaab0}
+.c-flat{background:var(--flat);color:var(--dim)}
+.c-na{background:transparent;color:var(--faint);border-color:var(--line)}
+.fresh{box-shadow:0 0 0 1px #9fe9c3,0 0 10px rgba(47,191,113,.45)}
+.fresh.c-short{box-shadow:0 0 0 1px #ffb3b8,0 0 10px rgba(229,72,77,.45)}
+.stretch{outline:1px dashed var(--gold);outline-offset:1px}
+.c-trend{background:#0f3540;color:var(--trend)}
+.c-chop{background:#3d2a12;color:var(--chop)}
+.c-rand{background:var(--flat);color:var(--dim)}
+.bb{position:relative;display:inline-block;width:58px;height:24px;border-radius:7px;background:var(--panel2);overflow:hidden;vertical-align:middle}
+.bb i{position:absolute;left:0;top:0;bottom:0}
+.bb span{position:relative;font:600 12px/24px "JetBrains Mono",monospace}
+.play{display:inline-block;padding:4px 9px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid var(--line)}
+.p-A{color:#9fe9c3;border-color:#245c41}
+.p-B{color:#f6c27a;border-color:#6a4a1d}
+.p-C{color:#a9b4ff;border-color:#3b437a}
+.p-w{color:var(--faint)}
+.score{display:inline-block;width:34px;height:24px;line-height:24px;border-radius:7px;font:700 13px "JetBrains Mono",monospace}
+.liq small{display:block;font-size:11px;color:var(--chop)}
+.footer{padding:16px 24px 40px;color:var(--faint);font-size:12px}
+details{margin:0 24px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px}
+summary{cursor:pointer;padding:10px 14px;color:var(--dim);font-weight:600}
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px 22px;padding:4px 16px 16px;font-size:13px;color:var(--dim)}
+.legend b{color:var(--text)}
+.empty{padding:40px;text-align:center;color:var(--dim)}
+@media (max-width:640px){.demo{margin:12px 16px 0}header,.controls,.cadence{padding-left:16px;padding-right:16px}.stats{margin-left:0;text-align:left}details{margin:0 16px 14px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">CORE·STACK RADAR<small>MULTI-TF × KERNEL MOMENTUM · VR · FLOW · BBWP · VOL · LIQUIDITY</small></div>
+  <div class="stats" id="stats">loading…</div>
+</header>
+<div id="demo"></div>
+
+<div class="controls">
+  <div class="seg" id="side"></div>
+  <div class="seg" id="cls"></div>
+  <input type="search" id="q" placeholder="filter symbol…" aria-label="Filter symbol">
+  <label class="ctl">min score <input type="range" id="min" min="0" max="10" value="0"> <span class="num" id="minv">0</span></label>
+  <label class="ctl"><select id="play" aria-label="Playbook">
+    <option value="">all playbooks</option><option>A · trend</option><option>A · pullback</option>
+    <option>B · range fade</option><option>C · break-retest</option><option>wait</option></select></label>
+  <label class="ctl"><input type="checkbox" id="fresh"> fresh flips only</label>
+  <label class="ctl">show top <select id="top"><option>25</option><option>50</option><option selected>100</option><option value="9999">all</option></select></label>
+</div>
+
+<div class="cadence"><b>UPDATE CADENCE</b><span>hourly at :05 past</span><span>15m · 1H · 4H · 1D computed on closed + live bars</span><span>σ today = HAR forecast made at the prior daily close</span><span>side &amp; playbook from 1H Kernel Momentum × 15m VR</span></div>
+
+<details><summary>How to read it</summary><div class="legend">
+  <div><b>KM</b> Kernel Momentum (Baz normalized MACD, SuperSmoother 4/12 · 8/24 · 16/48). Green LONG ≥ +0.3σ, red SHORT ≤ −0.3σ, gray FLAT. Dashed gold = stretched beyond ±2σ. Glow = flipped in the last 3 bars.</div>
+  <div><b>VR</b> Variance Ratio regime (k 8, 120 bars, z 1.96). TREND = moves follow through, CHOP = moves reverse, RAND = no edge.</div>
+  <div><b>FLOW</b> Normalized order flow (5/15/45), in σ. Delta is estimated from where each bar closes in its range: free data has no real bid/ask volume, so treat it as a proxy. Blank for forex and indices (no volume).</div>
+  <div><b>BBWP</b> Bollinger Band Width Percentile (7, lookback 100). Blue ≤ 12 = squeeze (expansion coming), red ≥ 90 = already expanded.</div>
+  <div><b>σ TODAY</b> HAR-RV forecast of today's 1σ move. ↑ = forecast well above the EWMA (vol rising: size down). <b>DAY POS</b> = price vs today's open in σ; beyond ±2σ the day's move is used up.</div>
+  <div><b>LIQUIDITY</b> Nearest untouched PDH / PDL / PWH / PWL and its distance in daily σ (+ above, − below). Orange = a level swept and reclaimed today.</div>
+  <div><b>PLAYBOOK</b> A trend / A pullback = 1H KM has a side; B range fade = FLAT + CHOP; C break-retest = FLAT + TREND; wait = FLAT + RAND.</div>
+  <div><b>SCORE</b> 0–10: how much agrees with the 1H side (KM on all four timeframes, flow on 15m and 1H, 15m VR trend, not beyond ±2σ). A filter for what to open on TradingView, not a signal.</div>
+</div></details>
+
+<div class="wrap"><table id="t"><thead></thead><tbody></tbody></table></div>
+<div class="footer" id="foot"></div>
+
+<script>
+const TFS=[["15m","15M"],["1h","1H"],["4h","4H"],["1d","1D"]];
+const CLASSES=["all","futures","crypto","forex","stocks","etfs","indices"];
+const S={side:"ALL",cls:"all",q:"",min:0,play:"",fresh:false,top:100,sort:"score",dir:-1};
+let DATA=null;
+try{const s=JSON.parse(localStorage.getItem("radar")||"{}");Object.assign(S,s);}catch(e){}
+const save=()=>{try{localStorage.setItem("radar",JSON.stringify(S))}catch(e){}};
+const $=id=>document.getElementById(id);
+
+function pills(el,items,key){
+  el.innerHTML="";
+  items.forEach(v=>{const b=document.createElement("button");b.className="pill"+(S[key]===v?" on":"");b.textContent=v;
+    b.onclick=()=>{S[key]=v;save();pills(el,items,key);render()};el.appendChild(b)});
+}
+const fmtP=p=>p==null?"—":p>=1000?p.toLocaleString(undefined,{maximumFractionDigits:2}):p>=1?p.toFixed(p>=100?2:4):p.toPrecision(4);
+const sgn=(v,d=2)=>v==null?"—":(v>0?"+":"")+v.toFixed(d);
+
+function kmChip(k){
+  if(!k)return '<span class="chip c-na">—</span>';
+  const c=k.st>0?"c-long":k.st<0?"c-short":"c-flat";
+  const x=(k.fresh?" fresh":"")+(Math.abs(k.v)>=2?" stretch":"");
+  return `<span class="chip ${c}${x}" title="${k.up}/3 speeds up">${sgn(k.v)}</span>`;
+}
+function vrChip(v){
+  if(!v)return '<span class="chip c-na">—</span>';
+  const [c,t]=v.st>0?["c-trend","TREND"]:v.st<0?["c-chop","CHOP"]:["c-rand","RAND"];
+  return `<span class="chip ${c}" title="VR ${v.v} · z ${v.z}">${t}</span>`;
+}
+function flowChip(f){
+  if(!f)return '<span class="chip c-na">—</span>';
+  const c=f.v>=0.5?"c-long":f.v<=-0.5?"c-short":"c-flat";
+  return `<span class="chip ${c}" title="${f.agree}/3 speeds agree">${sgn(f.v,1)}σ</span>`;
+}
+function bbChip(b){
+  if(!b)return '<span class="chip c-na">—</span>';
+  const v=b.v, col=v<=12?"var(--sq)":v>=90?"var(--ex)":"#4a5875";
+  const tc=v<=12?"#cfe3ff":v>=90?"#ffd0d8":"var(--text)";
+  return `<span class="bb" title="change ${sgn(b.d,0)}"><i style="width:${Math.max(4,v)}%;background:${col};opacity:.55"></i><span style="color:${tc}">${Math.round(v)}</span></span>`;
+}
+function scoreChip(s,side){
+  const a=0.15+0.085*s, col=side>0?`rgba(47,191,113,${a})`:side<0?`rgba(229,72,77,${a})`:"var(--flat)";
+  return `<span class="score" style="background:${col}">${s}</span>`;
+}
+
+function header(){
+  const sortTh=(k,l,cls="")=>`<th class="sort ${cls} ${S.sort===k?"act":""}" data-k="${k}" rowspan="2">${l}${S.sort===k?(S.dir<0?" ▾":" ▴"):""}</th>`;
+  let g=`<tr class="grp">${sortTh("sym","Symbol","sym")}${sortTh("price","Price")}${sortTh("chg","24h %")}${sortTh("sig","<span style=\"text-transform:none\">σ</span> TODAY")}${sortTh("pos","Day pos")}${sortTh("liq","Liquidity")}${sortTh("play","Playbook")}${sortTh("score","Score")}`;
+  let s='<tr class="sub">';
+  TFS.forEach(([k,l])=>{g+=`<th colspan="4" class="gl">${l}</th>`;
+    s+=`<th class="gl sort ${S.sort===k+"km"?"act":""}" data-k="${k}km">KM</th><th class="sort ${S.sort===k+"vr"?"act":""}" data-k="${k}vr">VR</th><th class="sort ${S.sort===k+"fl"?"act":""}" data-k="${k}fl">Flow</th><th class="sort ${S.sort===k+"bb"?"act":""}" data-k="${k}bb">BBWP</th>`});
+  $("t").tHead.innerHTML=g+"</tr>"+s+"</tr>";
+  $("t").tHead.querySelectorAll("th.sort").forEach(th=>th.onclick=()=>{const k=th.dataset.k;
+    if(S.sort===k)S.dir*=-1;else{S.sort=k;S.dir=k==="sym"||k==="play"?1:-1}save();render()});
+}
+function key(r,k){
+  const t=TFS.find(([x])=>k.startsWith(x)&&k.length>x.length);
+  if(t){const tf=r.tf[t[0]],f=k.slice(t[0].length);
+    if(f==="km")return tf.km?.v; if(f==="vr")return tf.vr?.v; if(f==="fl")return tf.flow?.v; if(f==="bb")return tf.bbwp?.v;}
+  switch(k){case"sym":return r.sym;case"price":return r.price;case"chg":return r.chg;case"sig":return r.vol?.sig_pct;
+    case"pos":return r.vol?.pos;case"liq":return r.liq?.dist==null?null:Math.abs(r.liq.dist);case"play":return r.play;default:return r.score}
+}
+function render(){
+  if(!DATA)return;
+  header();
+  const q=S.q.trim().toLowerCase();
+  let rows=DATA.rows.filter(r=>(S.side==="ALL"||(S.side==="LONG"?r.side>0:r.side<0))
+    &&(S.cls==="all"||r.cls===S.cls)&&(!q||r.sym.toLowerCase().includes(q)||r.tkr.toLowerCase().includes(q))
+    &&r.score>=S.min&&(!S.play||r.play===S.play)&&(!S.fresh||r.fresh));
+  const n=rows.length;
+  rows.sort((a,b)=>{const x=key(a,S.sort),y=key(b,S.sort);if(x==null&&y==null)return 0;if(x==null)return 1;if(y==null)return -1;
+    return (typeof x==="string"?x.localeCompare(y):x-y)*S.dir});
+  rows=rows.slice(0,+S.top);
+  $("t").tBodies[0].innerHTML=rows.length?rows.map(r=>{
+    const v=r.vol||{}, l=r.liq;
+    const pos=v.pos==null?'<span class="mute">—</span>':`<span class="num ${Math.abs(v.pos)>=2?"dn":Math.abs(v.pos)>=1?"":"mute"}">${sgn(v.pos)}σ</span>`;
+    const liq=l&&l.near?`<span class="liq num">${l.near} ${sgn(l.dist)}σ${l.sweep?`<small>${l.sweep}</small>`:""}</span>`:'<span class="mute">—</span>';
+    const pc=r.play?("p-"+(r.play[0]==="w"?"w":r.play[0])):"p-w";
+    let cells=`<td class="sym"><b>${r.sym}</b><span class="cls">${r.cls}</span></td>
+      <td class="num">${fmtP(r.price)}</td><td class="num ${r.chg>0?"up":r.chg<0?"dn":""}">${r.chg==null?"—":sgn(r.chg)+"%"}</td>
+      <td class="num">${v.sig_pct==null?"—":v.sig_pct.toFixed(2)+"%"}${v.rising?' <span class="dn" title="vol rising: size down">↑</span>':""}</td>
+      <td>${pos}</td><td>${liq}</td><td><span class="play ${pc}">${r.play||"—"}</span></td><td>${scoreChip(r.score,r.side)}</td>`;
+    TFS.forEach(([k])=>{const t=r.tf[k];cells+=`<td class="gl">${kmChip(t.km)}</td><td>${vrChip(t.vr)}</td><td>${flowChip(t.flow)}</td><td>${bbChip(t.bbwp)}</td>`});
+    return `<tr title="${r.tkr} · as of ${new Date(r.asof).toLocaleString()}">${cells}</tr>`}).join("")
+    :`<tr><td colspan="24" class="empty">Nothing matches these filters.</td></tr>`;
+  const mins=Math.round((Date.now()-new Date(DATA.generated))/60000);
+  $("stats").innerHTML=`<b>${DATA.count}</b> symbols · updated <b>${mins<1?"just now":mins+"m ago"}</b> · showing ${rows.length} of ${n} filtered`;
+  $("foot").textContent=(DATA.missing&&DATA.missing.length?`No data this run: ${DATA.missing.join(", ")}. `:"")+
+    "Data: Yahoo Finance (delayed for some exchanges). Futures use the continuous front-month chart, so NQ stands in for MNQ. Not trading advice.";
+}
+
+pills($("side"),["ALL","LONG","SHORT"],"side");
+pills($("cls"),CLASSES,"cls");
+$("q").value=S.q;$("q").oninput=e=>{S.q=e.target.value;render()};
+$("min").value=S.min;$("minv").textContent=S.min;$("min").oninput=e=>{S.min=+e.target.value;$("minv").textContent=S.min;save();render()};
+$("play").value=S.play;$("play").onchange=e=>{S.play=e.target.value;save();render()};
+$("fresh").checked=S.fresh;$("fresh").onchange=e=>{S.fresh=e.target.checked;save();render()};
+$("top").value=String(S.top);$("top").onchange=e=>{S.top=+e.target.value;save();render()};
+
+function load(){
+  fetch("data.json?t="+Date.now()).then(r=>{if(!r.ok)throw new Error(r.status);return r.json()}).then(d=>{
+    DATA=d;$("demo").innerHTML=d.demo?'<div class="demo"><b>DEMO DATA</b> · random prices generated to test the page. The live site shows real readings once the hourly scan runs.</div>':"";
+    render();
+  }).catch(e=>{$("stats").textContent="couldn't load data.json ("+e.message+")";
+    $("t").tBodies[0].innerHTML='<tr><td class="empty">No data yet. The first scan runs within the hour after setup.</td></tr>'});
+}
+load();
+setInterval(load,5*60*1000);
+</script>
+</body>
+</html>
