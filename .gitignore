@@ -1,2 +1,4 @@
 __pycache__/
 site/data.json
+site/stats.json
+history/

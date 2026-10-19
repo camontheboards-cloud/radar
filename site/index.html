@@ -76,6 +76,9 @@ details{margin:0 24px 14px;background:var(--panel);border:1px solid var(--line);
 summary{cursor:pointer;padding:10px 14px;color:var(--dim);font-weight:600}
 .legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px 22px;padding:4px 16px 16px;font-size:13px;color:var(--dim)}
 .legend b{color:var(--text)}
+.ck{border-collapse:collapse;margin:6px 0 10px;width:auto;min-width:0}
+.ck th,.ck td{padding:6px 12px;border-bottom:1px solid var(--line);font:13px "JetBrains Mono",monospace}
+.ck th{position:static;background:transparent;font:600 11px Inter,sans-serif;letter-spacing:.08em}
 .empty{padding:40px;text-align:center;color:var(--dim)}
 @media (max-width:640px){.demo{margin:12px 16px 0}header,.controls,.cadence{padding-left:16px;padding-right:16px}.stats{margin-left:0;text-align:left}details{margin:0 16px 14px}}
 </style>
@@ -107,10 +110,12 @@ summary{cursor:pointer;padding:10px 14px;color:var(--dim);font-weight:600}
   <div><b>FLOW</b> Normalized order flow (5/15/45), in σ. Delta is estimated from where each bar closes in its range: free data has no real bid/ask volume, so treat it as a proxy. Blank for forex and indices (no volume).</div>
   <div><b>BBWP</b> Bollinger Band Width Percentile (7, lookback 100). Blue ≤ 12 = squeeze (expansion coming), red ≥ 90 = already expanded.</div>
   <div><b>σ TODAY</b> HAR-RV forecast of today's 1σ move. ↑ = forecast well above the EWMA (vol rising: size down). <b>DAY POS</b> = price vs today's open in σ; beyond ±2σ the day's move is used up.</div>
-  <div><b>LIQUIDITY</b> Nearest untouched PDH / PDL / PWH / PWL and its distance in daily σ (+ above, − below). Orange = a level swept and reclaimed today.</div>
+  <div><b>LIQUIDITY</b> Nearest untouched PDH / PDL / PWH / PWL (plus ONH / ONL on futures once the cash session opens) and its distance in daily σ (+ above, − below). Orange = a level swept and reclaimed today.</div>
   <div><b>PLAYBOOK</b> A trend / A pullback = 1H KM has a side; B range fade = FLAT + CHOP; C break-retest = FLAT + TREND; wait = FLAT + RAND.</div>
   <div><b>SCORE</b> 0–10: how much agrees with the 1H side (KM on all four timeframes, flow on 15m and 1H, 15m VR trend, not beyond ±2σ). A filter for what to open on TradingView, not a signal.</div>
 </div></details>
+
+<details id="check"><summary>Score check: do high scores do better?</summary><div id="checkBody" class="legend" style="display:block"></div></details>
 
 <div class="wrap"><table id="t"><thead></thead><tbody></tbody></table></div>
 <div class="footer" id="foot"></div>
@@ -220,8 +225,21 @@ function load(){
   }).catch(e=>{$("stats").textContent="couldn't load data.json ("+e.message+")";
     $("t").tBodies[0].innerHTML='<tr><td class="empty">No data yet. The first scan runs within the hour after setup.</td></tr>'});
 }
-load();
-setInterval(load,5*60*1000);
+function loadStats(){
+  fetch("stats.json?t="+Date.now()).then(r=>r.ok?r.json():null).then(st=>{
+    const el=$("checkBody");
+    if(!st||!st.horizons){el.innerHTML="Collecting data: every hourly run records each symbol's score and price. Results appear here after the first day.";return}
+    const H=st.horizons, b=["9–10","7–8","5–6","0–4","all"];
+    const cell=x=>x&&x.n?`<td class="${x.mean>0?"up":x.mean<0?"dn":""}">${sgn(x.mean)}σ</td><td>${x.hit}%</td><td class="mute">${x.n}</td>`:'<td class="mute">—</td><td class="mute">—</td><td class="mute">0</td>';
+    el.innerHTML=`<table class="ck"><tr><th>SCORE</th><th>4H MOVE</th><th>4H HIT</th><th>N</th><th>24H MOVE</th><th>24H HIT</th><th>N</th></tr>`+
+      b.map(k=>`<tr><td>${k}</td>${cell(H["4h"]?.[k])}${cell(H["24h"]?.[k])}</tr>`).join("")+`</table>
+      Average move in the direction of the 1H side, in units of that day's σ, 4 and 24 hours after the reading. Hit = share that moved the right way.
+      Collecting since ${new Date(st.since).toLocaleDateString()}. Hourly samples overlap and markets trend together, so the numbers are noisy until each bucket has a few hundred and a few weeks of data.
+      If 9–10 doesn't beat "all" after a month, the score needs changing.`;
+  }).catch(()=>{});
+}
+load();loadStats();
+setInterval(()=>{load();loadStats()},5*60*1000);
 </script>
 </body>
 </html>

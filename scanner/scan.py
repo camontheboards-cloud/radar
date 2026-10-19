@@ -55,6 +55,15 @@ def _download(tickers, interval, period, tries=3):
                     out[t] = df
             except Exception:
                 pass
+    # second chance, one at a time, for anything a batch dropped (rate limits hit batches hardest)
+    for t in [t for t in tickers if t not in out]:
+        try:
+            time.sleep(1)
+            df = _clean(yf.Ticker(t).history(interval=interval, period=period, auto_adjust=True))
+            if len(df) > 50:
+                out[t] = df
+        except Exception:
+            pass
     return out
 
 
@@ -164,7 +173,8 @@ def scan_symbol(t, frames):
     row["asof"] = fresh.index[-1].isoformat()
     vf = vol_forecast(d1)
     row["vol"] = {k: vf[k] for k in ("sig_pct", "rising", "pos")} if vf else None
-    row["liq"] = liquidity(d1, vf["sig_pts"]) if vf else None
+    row["liq"] = liquidity(d1, vf["sig_pts"], frames.get("15m"), cls == "futures") if vf else None
+    row["sig_pts"] = vf["sig_pts"] if vf else None
     km1h = row["tf"]["1h"]["km"]
     row["side"] = km1h["st"] if km1h else 0
     row["fresh"] = bool(km1h and km1h["fresh"])
@@ -211,6 +221,10 @@ def main():
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w") as f:
         json.dump(_jsonable(out), f, separators=(",", ":"), ensure_ascii=False)
+    hist = os.environ.get("HISTORY_DIR")
+    if hist:  # forward test of the score (see track.py); the workflow keeps this folder on the `history` branch
+        from track import run as track_run
+        track_run(rows, hist, os.path.join(os.path.dirname(OUT), "stats.json"))
     print(f"{len(rows)} symbols in {time.time() - t0:.0f}s · missing {len(out['missing'])}: {out['missing'][:12]}")
 
 

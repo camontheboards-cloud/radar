@@ -165,7 +165,27 @@ def vol_forecast(daily, fit_n=500, lam=0.94):
 
 
 # ─── Liquidity (previous day / week highs and lows, sweeps) ───────────────
-def liquidity(daily, sig_pts):
+def overnight_range(m15):
+    """Futures overnight (Globex) high / low: 18:00 → 09:30 New York of the current session.
+    Returned only once the cash session has opened; before that the overnight range is still forming."""
+    if m15 is None or len(m15) < 10:
+        return None, None
+    x = m15.copy()
+    x.index = x.index.tz_convert("America/New_York") if x.index.tz is not None else x.index.tz_localize("UTC").tz_convert("America/New_York")
+    now = x.index[-1]
+    if not (now.hour > 9 or (now.hour == 9 and now.minute >= 30)) or now.hour >= 17:
+        return None, None
+    start = (now - pd.Timedelta(days=1)).normalize() + pd.Timedelta(hours=18)
+    if now.weekday() == 0:  # Monday: the session opened Sunday 18:00
+        start -= pd.Timedelta(days=1)
+    end = now.normalize() + pd.Timedelta(hours=9, minutes=30)
+    on = x[(x.index >= start) & (x.index < end)]
+    if len(on) < 4:
+        return None, None
+    return float(on["high"].max()), float(on["low"].min())
+
+
+def liquidity(daily, sig_pts, m15=None, futures=False):
     d = daily.dropna(subset=["high", "low", "close"])
     if len(d) < 10 or not sig_pts:
         return None
@@ -178,20 +198,35 @@ def liquidity(daily, sig_pts):
     pwh, pwl = (float(wk["high"].iloc[-1]), float(wk["low"].iloc[-1])) if len(wk) else (None, None)
     last, hi, lo = float(today["close"]), float(today["high"]), float(today["low"])
     levels = {"PDH": pdh, "PDL": pdl, "PWH": pwh, "PWL": pwl}
+    rth_hi = rth_lo = None
+    if futures:
+        onh, onl = overnight_range(m15)
+        if onh is not None:
+            levels.update({"ONH": onh, "ONL": onl})
+            # today's high / low so far must only count the cash session for the ON levels
+            x = m15.copy()
+            x.index = x.index.tz_convert("America/New_York")
+            rth = x[x.index >= x.index[-1].normalize() + pd.Timedelta(hours=9, minutes=30)]
+            rth_hi, rth_lo = float(rth["high"].max()), float(rth["low"].min())
+    def hl(name):
+        return (rth_hi, rth_lo) if name.startswith("ON") else (hi, lo)
+
     sweeps = []
     for name, px in levels.items():
         if px is None:
             continue
-        if name.endswith("H") and hi > px and last < px:
+        h_, l_ = hl(name)
+        if name.endswith("H") and h_ > px and last < px:
             sweeps.append(name + " swept ↩")
-        if name.endswith("L") and lo < px and last > px:
+        if name.endswith("L") and l_ < px and last > px:
             sweeps.append(name + " swept ↩")
     # nearest level price has NOT traded through today
     best = None
     for name, px in levels.items():
         if px is None:
             continue
-        taken = (name.endswith("H") and hi >= px) or (name.endswith("L") and lo <= px)
+        h_, l_ = hl(name)
+        taken = (name.endswith("H") and h_ >= px) or (name.endswith("L") and l_ <= px)
         if taken:
             continue
         dist = (px - last) / sig_pts

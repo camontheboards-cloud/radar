@@ -8,7 +8,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write             # to save the score history on the `history` branch
   pages: write
   id-token: write
 
@@ -30,8 +30,32 @@ jobs:
           python-version: "3.12"
           cache: pip
       - run: pip install -r requirements.txt
+
+      - name: Load score history
+        env:
+          REMOTE: https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git
+        run: |
+          if git ls-remote --exit-code --heads "$REMOTE" history >/dev/null; then
+            git clone --quiet --depth 1 --branch history "$REMOTE" history
+          else
+            mkdir history && git -C history init --quiet -b history && git -C history remote add origin "$REMOTE"
+          fi
+
       - name: Scan
+        env:
+          HISTORY_DIR: history
         run: python scanner/scan.py
+
+      - name: Save score history
+        continue-on-error: true
+        run: |
+          cd history
+          git config user.name "radar-bot"
+          git config user.email "radar-bot@users.noreply.github.com"
+          git add -A
+          git commit --quiet -m "scores $(date -u +%Y-%m-%dT%H:%MZ)" || exit 0
+          git push --quiet origin history
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
